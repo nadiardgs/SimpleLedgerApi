@@ -21,6 +21,9 @@ namespace SimpleLedgerApi.Tests.Controllers
         private const string UnexpectedErrorMessage = "An unexpected error occurred. Please try again later.";
         private const string MissingTransactionErrorMessage = "Transaction type is required.";
         private const string NegativeAmountErrorMessage = "Amount must be a positive value.";
+        private const string InsufficientFundsErrorMessage = "nsufficient funds for withdrawal.";
+        private const string DescriptionRequiredErrorMessage = "Description is required for withdrawals.";
+        private const string DescriptionTooLongErrorMessage = "Description cannot exceed 500 characters.";
 
         public TransactionsControllerTests()
         {
@@ -192,26 +195,26 @@ namespace SimpleLedgerApi.Tests.Controllers
                 }
             }
             
-            // ACT
-            var result = _controller.RecordTransaction(invalidDepositRequest);
+                // ACT
+                var result = _controller.RecordTransaction(invalidDepositRequest);
 
-            // ASSERT
-            result.Should().BeOfType<BadRequestObjectResult>();
-            var badRequestResult = result.As<BadRequestObjectResult>();
-            badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+                // ASSERT
+                result.Should().BeOfType<BadRequestObjectResult>();
+                var badRequestResult = result.As<BadRequestObjectResult>();
+                badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
 
-            badRequestResult.Value.Should().BeOfType<ValidationProblemDetails>();
+                badRequestResult.Value.Should().BeOfType<ValidationProblemDetails>();
 
-            var problemDetails = badRequestResult.Value as ValidationProblemDetails;
+                var problemDetails = badRequestResult.Value as ValidationProblemDetails;
 
-            problemDetails.Should().NotBeNull();
+                problemDetails.Should().NotBeNull();
 
-            problemDetails.Errors.Should().NotBeNullOrEmpty();
-            problemDetails.Errors.Should().ContainKey("Type");
-            problemDetails.Errors["Type"].Should().Contain(MissingTransactionErrorMessage);
-            
-            _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Never());
-        }
+                problemDetails.Errors.Should().NotBeNullOrEmpty();
+                problemDetails.Errors.Should().ContainKey("Type");
+                problemDetails.Errors["Type"].Should().Contain(MissingTransactionErrorMessage);
+                
+                _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Never());
+            }
         
         [Fact]
         public void RecordTransaction_ShouldReturn400BadRequest_WhenDepositAmountIsNegative()
@@ -252,6 +255,166 @@ namespace SimpleLedgerApi.Tests.Controllers
             problemDetails.Errors.Should().NotBeNullOrEmpty();
             problemDetails.Errors.Should().ContainKey("Amount");
             problemDetails.Errors["Amount"].Should().Contain(NegativeAmountErrorMessage);
+            
+            _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Never());
+        }
+
+        [Fact]
+        public void RecordTransaction_ShouldReturn201Created_WhenWithdrawalIsSuccessful()
+        {
+            // ARRANGE
+            var withdrawal = new NewTransactionRequest()
+            {
+                Amount = 450.2m,
+                Description = "College tuition fee",
+                Type = TransactionType.Withdrawal
+            };
+            
+            var withdrawalTransaction = new Transaction()
+            {
+                Id = Guid.NewGuid(),
+                Amount = withdrawal.Amount,
+                Description = withdrawal.Description,
+                Type = withdrawal.Type.Value,
+                Timestamp = DateTime.UtcNow
+            };
+            
+            _mockLedgerService.Setup(s => s.RecordTransaction(withdrawal))
+                .Returns(withdrawalTransaction);
+
+            // ACT
+            var result = _controller.RecordTransaction(withdrawal);
+
+            // ASSERT
+            var okResult = result.Should().BeOfType<ObjectResult>().Subject;
+
+            okResult.StatusCode.Should().Be(StatusCodes.Status201Created);
+
+            var depositResponse = okResult.Value.Should().BeAssignableTo<Transaction>().Subject;
+
+            depositResponse.Id.Should().Be(withdrawalTransaction.Id);
+            depositResponse.Amount.Should().Be(withdrawal.Amount);
+            depositResponse.Description.Should().Be(withdrawal.Description);
+            depositResponse.Type.Should().Be(TransactionType.Withdrawal);
+            depositResponse.Timestamp.Should().BeCloseTo(withdrawalTransaction.Timestamp, 100.Milliseconds());
+            
+            _mockLedgerService.Verify(s => s.RecordTransaction(withdrawal), Times.Once());
+        }
+        
+        [Fact]
+        public void RecordTransaction_ShouldReturn400BadRequest_WhenWithdrawalHasInsufficientFunds()
+        {
+            // ARRANGE
+            var invalidWithdrawal = new NewTransactionRequest()
+            {
+                Amount = 1500m,
+                Description = "College tuition fee",
+                Type = TransactionType.Withdrawal
+            };
+
+            _mockLedgerService.Setup(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()))
+                .Throws(new InvalidOperationException(InsufficientFundsErrorMessage));
+            
+            // ACT
+            var result = _controller.RecordTransaction(invalidWithdrawal);
+
+            // ASSERT
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var badRequestResult = result.As<BadRequestObjectResult>();
+            badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+
+            badRequestResult.Value.Should().BeOfType<ProblemDetails>();
+
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ProblemDetails>().Subject;
+            problemDetails.Detail.Should().Be(InsufficientFundsErrorMessage);
+            problemDetails.Title.Should().Be("Bad Request");
+            
+            _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Once());
+        }
+        
+        [Fact]
+        public void RecordTransaction_ShouldReturn400BadRequest_WhenWithdrawalHasNoDescription()
+        {
+            // ARRANGE
+            var invalidWithdrawal = new NewTransactionRequest()
+            {
+                Amount = 1500m,
+                Description = null,
+                Type = TransactionType.Withdrawal
+            };
+
+            var validator = new NewTransactionRequestValidator();
+            var validationResult = validator.Validate(invalidWithdrawal);
+
+            if (!validationResult.IsValid)
+            {
+                foreach (var error in validationResult.Errors)
+                {
+                    _controller.ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+                }
+            }
+            
+            // ACT
+            var result = _controller.RecordTransaction(invalidWithdrawal);
+
+            // ASSERT
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var badRequestResult = result.As<BadRequestObjectResult>();
+            badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+
+            badRequestResult.Value.Should().BeOfType<ValidationProblemDetails>();
+
+            var problemDetails = badRequestResult.Value as ValidationProblemDetails;
+
+            problemDetails.Should().NotBeNull();
+
+            problemDetails.Errors.Should().NotBeNullOrEmpty();
+            problemDetails.Errors.Should().ContainKey("Description");
+            problemDetails.Errors["Description"].Should().Contain(DescriptionRequiredErrorMessage);
+            
+            _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Never());
+        }
+        
+        [Fact]
+        public void RecordTransaction_ShouldReturn400BadRequest_WhenDescriptionIsTooLong()
+        {
+            // ARRANGE
+            var invalidDeposit = new NewTransactionRequest()
+            {
+                Amount = 2000m,
+                Description = new string('a', 600),
+                Type = TransactionType.Withdrawal
+            };
+            
+            _mockLedgerService.Setup(s => s.RecordTransaction(invalidDeposit))
+                .Throws(new InvalidOperationException(DescriptionTooLongErrorMessage));
+            
+            var validator = new NewTransactionRequestValidator();
+            var validationResult = validator.Validate(invalidDeposit);
+            
+            if (!validationResult.IsValid)
+            {
+                foreach (var error in validationResult.Errors)
+                {
+                    _controller.ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
+                }
+            }
+            
+            // ACT
+            var result = _controller.RecordTransaction(invalidDeposit);
+
+            // ASSERT
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var badRequestResult = result.As<BadRequestObjectResult>();
+            badRequestResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+
+            badRequestResult.Value.Should().BeOfType<ValidationProblemDetails>();
+
+            var problemDetails = badRequestResult.Value.Should().BeOfType<ValidationProblemDetails>().Subject;
+            
+            problemDetails.Errors.Should().NotBeNullOrEmpty();
+            problemDetails.Errors.Should().ContainKey("Description");
+            problemDetails.Errors["Description"].Should().Contain(DescriptionTooLongErrorMessage);
             
             _mockLedgerService.Verify(s => s.RecordTransaction(It.IsAny<NewTransactionRequest>()), Times.Never());
         }

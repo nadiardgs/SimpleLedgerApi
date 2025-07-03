@@ -76,11 +76,16 @@ public class TransactionsController : ControllerBase
         }
         catch (InvalidOperationException ex) 
         {
-            return BadRequest(new { message = ex.Message });
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad Request",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest
+            });
         }
-        catch (Exception) 
+        catch (Exception ex) 
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An unexpected error occurred." });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An unexpected server error occurred." });
         }
     }
 }
