@@ -43,7 +43,7 @@ public class TransactionsController : ControllerBase
     /// <response code="200">Returns the list of transactions.</response>
     /// <response code="500">If an unexpected server error occurs.</response>
     [HttpGet("/api/transactions")]
-    public ActionResult<List<Transaction>> GetTransactionHistory()
+    public ActionResult<IEnumerable<Transaction>> GetTransactionHistory()
     {
         var transactions = _ledgerService.GetTransactionHistory();
 
