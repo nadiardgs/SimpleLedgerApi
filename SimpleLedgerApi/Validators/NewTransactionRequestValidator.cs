@@ -12,6 +12,9 @@ public class NewTransactionRequestValidator : AbstractValidator<NewTransactionRe
 
         RuleFor(x => x.Type)
             .IsInEnum().WithMessage("Invalid transaction type specified.");
+        
+        RuleFor(x => x.Type)
+            .NotNull().WithMessage("Transaction type is required.");
 
         RuleFor(x => x.Description)
             .MaximumLength(500).WithMessage("Description cannot exceed 500 characters.");

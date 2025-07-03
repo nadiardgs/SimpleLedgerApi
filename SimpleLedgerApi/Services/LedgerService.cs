@@ -46,7 +46,7 @@ public class LedgerService : ILedgerService
             Id = Guid.NewGuid(),
             Amount = request.Amount,
             Timestamp = DateTime.UtcNow,
-            Type = request.Type,
+            Type = request.Type.Value,
             Description = request.Description
         };
 

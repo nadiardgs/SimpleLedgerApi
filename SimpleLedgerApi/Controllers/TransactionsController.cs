@@ -61,6 +61,9 @@ public class TransactionsController : ControllerBase
     [HttpPost]
     public IActionResult RecordTransaction([FromBody] NewTransactionRequest request)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(new ValidationProblemDetails(ModelState));
+        
         try
         {
             var createdTransaction = _ledgerService.RecordTransaction(request);
