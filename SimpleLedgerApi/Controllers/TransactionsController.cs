@@ -22,6 +22,8 @@ public class TransactionsController : ControllerBase
     /// </summary>
     /// <returns>A 200 OK code with the current balance and the current UTC time.</returns>
     /// <returns>A 500 Internal Server Error code in case of unexpected exceptions.</returns>
+    /// <response code="200">Returns the balance.</response>
+    /// <response code="500">If an unexpected server error occurs.</response>
     [HttpGet("/api/balances")]
     public ActionResult<BalanceResponse> GetCurrentBalance()
     {
@@ -38,7 +40,8 @@ public class TransactionsController : ControllerBase
     /// Lists all transactions registered in the legder, from the most to the least recent.
     /// </summary>
     /// <returns>A 200 OK code with the list of transactions, containing the amount, time of transaction and description.</returns>
-    /// <returns>A 500 Internal Server Error code in case of unexpected exceptions.</returns>
+    /// <response code="200">Returns the list of transactions.</response>
+    /// <response code="500">If an unexpected server error occurs.</response>
     [HttpGet("/api/transactions")]
     public ActionResult<List<Transaction>> GetTransactionHistory()
     {
@@ -53,7 +56,7 @@ public class TransactionsController : ControllerBase
     /// <param name="request">The transaction details, including amount, type ("Deposit" or "Withdrawal"), and description.</param>
     /// <returns>A 201 Created response containing the newly created transaction.</returns>
     /// <response code="201">Returns the newly created transaction item.</response>
-    /// <response code="400">If the request is invalid (e.g., negative amount, insufficient funds for withdrawal).</response>
+    /// <response code="400">If the request is invalid (e.g., negative amount, insufficient funds for withdrawal), a misspelled transaction type.</response>
     /// <response code="500">If an unexpected server error occurs.</response>
     [HttpPost]
     public IActionResult RecordTransaction([FromBody] NewTransactionRequest request)
