@@ -20,7 +20,7 @@ namespace SimpleLedgerApi.Tests.Controllers
         
         private const string UnexpectedErrorMessage = "An unexpected error occurred. Please try again later.";
         private const string MissingTransactionErrorMessage = "Transaction type is required.";
-        private const string NegativeAmountErrorMessage = "Amount must be a positive value.";
+        private const string NegativeAmountErrorMessage = "Amount must be greater than zero.";
         private const string InsufficientFundsErrorMessage = "nsufficient funds for withdrawal.";
         private const string DescriptionRequiredErrorMessage = "Description is required for withdrawals.";
         private const string DescriptionTooLongErrorMessage = "Description cannot exceed 500 characters.";

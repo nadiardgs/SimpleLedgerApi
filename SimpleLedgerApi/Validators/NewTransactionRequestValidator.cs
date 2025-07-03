@@ -8,7 +8,7 @@ public class NewTransactionRequestValidator : AbstractValidator<NewTransactionRe
     public NewTransactionRequestValidator()
     {
         RuleFor(x => x.Amount)
-            .GreaterThan(0).WithMessage("Amount must be a positive value.");
+            .GreaterThan(0).WithMessage("Amount must be greater than zero.");
 
         RuleFor(x => x.Type)
             .IsInEnum().WithMessage("Invalid transaction type specified.");
