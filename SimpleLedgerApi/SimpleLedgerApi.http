@@ -1,0 +1,6 @@
+@SimpleLedgerApi_HostAddress = http://localhost:5186
+
+GET {{SimpleLedgerApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
